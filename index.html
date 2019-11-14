@@ -186,7 +186,14 @@
                 scene.add(particles);
             });
 
-            setTimeout(render, 1000);
+            (function(n) {
+                if (n < 8) {
+                    console.log("Call #: " + n);
+                    render();
+                    let caller = arguments.callee;
+                    setTimeout(caller, 500, n + 1);
+                }
+            })(0);
         }
 
         function resize() {
