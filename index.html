@@ -142,8 +142,8 @@
             // Particles
             addParticles(d3.format('.2f')(slider.value()));
             let i = 0;
-            for (i; i < steps.length; i++) {
-                setTimeout(slider.value, 3000 * (i + 1), steps[i]);
+            for (i; i < steps.length; ++i) {
+                setTimeout(slider.value, 3000 * i, steps[i]);
             }
 
             // Events
