@@ -109,8 +109,9 @@
             scene.add(backLight);
 
             // Slider
+            let width  = (window.innerWidth < 960) ? 480 : (window.innerWidth / 2)
             let slider = d3.sliderBottom()
-                .width(window.innerWidth / 2 - 60)
+                .width(width - 60)
                 .min(d3.min(steps))
                 .max(d3.max(steps))
                 .step(0.01)
@@ -119,7 +120,7 @@
 
             d3.select('#slider')
                 .append('svg')
-                .attr('width', window.innerWidth / 2)
+                .attr('width', width)
                 .attr('height', 80)
                 .append('g')
                 .attr('transform', 'translate(30, 30)')
