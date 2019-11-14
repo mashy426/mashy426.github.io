@@ -187,11 +187,11 @@
             });
 
             setTimeout((function(n) {
-                if (n < 8) {
+                if (n < 4) {
                     render();
-                    setTimeout(arguments.callee, 200, n + 1);
+                    setTimeout(arguments.callee, 250, n + 1);
                 }
-            }), 200, 0);
+            }), 500, 0);
         }
 
         function resize() {
