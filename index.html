@@ -69,7 +69,7 @@
     <div id='slider'></div>
     <div id='container'></div>
     <script>
-        var camera, renderer, scene, points, particles,
+        var camera, renderer, scene, particles,
             steps = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13];
 
         init();
@@ -141,6 +141,10 @@
 
             // Particles
             addParticles(d3.format('.2f')(slider.value()));
+            let i = 0;
+            for (i; i < steps.length; i++) {
+                setTimeout(slider.value, 3000 * (i + 1), steps[i]);
+            }
 
             // Events
             window.addEventListener('resize', resize, false);
@@ -169,7 +173,7 @@
                 return;
             }
 
-            if (points) {
+            if (particles) {
                 scene.remove(particles);
                 render();
             }
@@ -181,7 +185,7 @@
                     z: parseFloat(d['Points:2'])
                 };
             }).then(function(data) {
-                points = new THREE.Geometry();
+                let points = new THREE.Geometry();
                 data.forEach(function(d) { points.vertices.push(new THREE.Vector3(d.x, d.y, d.z)); });
                 particles = new THREE.Points(points, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 50%, 75%)' }));
                 scene.add(particles);
