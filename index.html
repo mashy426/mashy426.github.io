@@ -186,9 +186,12 @@
                 scene.add(particles);
             });
 
-            setTimeout(render, 1000, 0);
-            setTimeout(render, 1500, 0);
-            setTimeout(render, 2000, 0);
+            (function(n) {
+                if (n < 10) {
+                    render();
+                    setTimeout(arguments.callee, 200, n + 1);
+                }
+            })(0);
         }
 
         function resize() {
