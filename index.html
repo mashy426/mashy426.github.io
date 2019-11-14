@@ -189,7 +189,7 @@
             setTimeout((function(n) {
                 if (n < 2) {
                     render();
-                    setTimeout(arguments.callee, 500, n + 1);
+                    setTimeout(arguments.callee, 250, n + 1);
                 }
             }), 1000, 0);
         }
