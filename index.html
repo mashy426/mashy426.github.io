@@ -23,7 +23,7 @@
             color: hsl(200, 25%, 95%);
             font-family: 'Lato', sans-serif;
         }
-        #background {
+        #gradient {
             position: absolute;
             bottom: 0px;
             left: 0px;
@@ -41,7 +41,7 @@
             left: -60%;
             right: 0px;
             top: -60%;
-            z-index: 1;
+            z-index: 0;
             display: block;
         }
         #title {
@@ -64,7 +64,7 @@
     </style>
 </head>
 <body>
-    <div id='background'></div>
+    <div id='gradient'></div>
     <div id='title'>Nozzle with Particles Data</div>
     <div id='slider'></div>
     <div id='container'></div>
@@ -81,6 +81,7 @@
 
             // Renderer
             renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setClearColor('hsl(0, 0%, 0%)', 0);
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
             document.querySelector('#container').appendChild(renderer.domElement);
@@ -141,8 +142,7 @@
 
             // Particles
             addParticles(d3.format('.2f')(slider.value()));
-            let i = 0;
-            for (i; i < steps.length; ++i) {
+            for (i = 0; i < steps.length; ++i) {
                 setTimeout(slider.value, 3000 * i, steps[i]);
             }
 
