@@ -186,13 +186,12 @@
                 scene.add(particles);
             });
 
-            (function(n) {
-                if (n < 12) {
-                    console.log("Call #: " + n);
+            setTimeout((function(n) {
+                if (n < 4) {
                     render();
                     setTimeout(arguments.callee, 250, n + 1);
                 }
-            })(0);
+            })(0), 1000);
         }
 
         function resize() {
