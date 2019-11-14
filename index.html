@@ -188,14 +188,14 @@
                 data.forEach(function(d) { points.vertices.push(new THREE.Vector3(d.x, d.y, d.z)); });
                 particles = new THREE.Points(points, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 50%, 75%)' }));
                 scene.add(particles);
-            });
 
-            setTimeout((function(n) {
-                if (n < 3) {
-                    render();
-                    setTimeout(arguments.callee, 500, n + 1);
-                }
-            }), 1000, 0);
+                setTimeout((function(n) {
+                    if (n < 3) {
+                        render();
+                        setTimeout(arguments.callee, 500, n + 1);
+                    }
+                }), 1000, 0);
+            });
         }
 
         function resize() {
