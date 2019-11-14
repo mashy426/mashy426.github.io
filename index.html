@@ -73,7 +73,6 @@
             steps = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13];
 
         init();
-        render();
         cursors();
 
         function init() {
@@ -146,7 +145,7 @@
             addParticles(d3.format('.2f')(sliderBottom.value()));
 
             // Events
-            window.addEventListener('resize', render, false);
+            window.addEventListener('resize', resize, false);
         }
 
         function addParticles(step) {
@@ -171,16 +170,18 @@
                 scene.add(particles);
             });
 
-            render();
+            setTimeout(render, 1000);
         }
 
         function render() {
-            setTimeout(function() {
-                camera.aspect = (window.innerWidth * 1.6) / (window.innerHeight * 1.6);
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
-                renderer.render(scene, camera);
-            }, 1000);
+            renderer.render(scene, camera);
+        }
+
+        function resize() {
+            camera.aspect = (window.innerWidth * 1.6) / (window.innerHeight * 1.6);
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
+            render();
         }
 
         function cursors() {
