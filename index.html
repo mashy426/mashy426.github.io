@@ -188,9 +188,9 @@
 
             (function(n) {
                 if (n < 3) {
-                    arguments.callee(n + 1);
+                    setTimeout(arguments.callee, 500, n + 1);
                     console.log("CALL #: " + n);
-                    setTimeout(render, 1000);
+                    setTimeout(render, 500);
                 }
             })(0);
         }
