@@ -148,9 +148,9 @@
 
         function cursors(elem) {
             elem.onmousedown = function(e) {
-                if (e.button == 0) {
+                if (e.button === 0) {
                     elem.style.cursor = 'move';
-                } else if (e.button == 2) {
+                } else if (e.button === 2) {
                     elem.style.cursor = 'ew-resize';
                 }
             };
@@ -165,12 +165,13 @@
         }
 
         function addParticles(step) {
-            if (step == '0.07' || step == '0.10') {
+            if (step === '0.07' || step === '0.10') {
                 return;
             }
 
             if (particles) {
                 scene.remove(particles);
+                render();
             }
 
             d3.csv('particles/' + step + '.csv', function(d) {
