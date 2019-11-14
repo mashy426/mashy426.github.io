@@ -1,33 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>3D Geometry of Nozzle</title>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Nozzle with Particles Data</title>
 
-    <link href="https://fonts.googleapis.com/css?family=Lato:300&display=swap" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=Lato:300' rel='stylesheet'>
 
-    <script src="js/three.js"></script>
-    <script src="js/Detector.js"></script>
-    <script src="js/OrbitControls.js"></script>
-    <script src="js/OBJLoader.js"></script>
-    <script src="js/MTLLoader.js"></script>
+    <script src='js/d3.min.js'></script>
+    <script src='js/d3-simple-slider.min.js'></script>
+    <script src='js/three.min.js'></script>
+    <script src='js/OrbitControls.js'></script>
+    <script src='js/MTLLoader.js'></script>
+    <script src='js/OBJLoader.js'></script>
 
     <style>
         body {
             overflow: hidden;
-            margin: 0;
-            padding: 0;
+            margin: 0px;
+            padding: 0px;
             background: hsl(200, 20%, 14%);
-            background-image: linear-gradient(hsl(200, 20%, 18%), hsl(200, 20%, 10%));
-            color: hsl(0, 0%, 100%);
+            color: hsl(200, 25%, 95%);
             font-family: 'Lato', sans-serif;
+        }
+        #background {
+            position: absolute;
+            bottom: 0px;
+            left: 0px;
+            right: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(hsl(200, 20%, 18%), hsl(200, 20%, 10%));
+            z-index: 0;
+            display: block;
+        }
+        #container {
+            position: absolute;
+            bottom: 0px;
+            left: -60%;
+            right: 0px;
+            top: -60%;
+            z-index: 1;
+            display: block;
         }
         #title {
             position: absolute;
             top: 10px;
             width: 100%;
-            font-size: 48px;
+            font-size: 5vh;
+            text-align: center;
+            z-index: 100;
+            display: block;
+        }
+        #slider {
+            position: absolute;
+            bottom: 0px;
+            width: 100%;
             text-align: center;
             z-index: 100;
             display: block;
@@ -35,125 +64,138 @@
     </style>
 </head>
 <body>
-    <div id="title">3D Geometry of Nozzle</div>
+    <div id='background'></div>
+    <div id='title'>Nozzle with Particles Data</div>
+    <div id='slider'></div>
+    <div id='container'></div>
     <script>
-        if (!Detector.webgl) {
-            Detector.addGetWebGLMessage();
-        }
-
-        var container, camera, scene, ambient, keyLight, fillLight;
-        var backLight, lighting, geometry, renderer, controls;
+        var camera, renderer, scene, particles,
+            steps = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13];
 
         init();
-        animate();
+        render();
         cursors();
 
         function init() {
-            container = document.createElement('div');
-            document.body.appendChild(container);
+            let container = document.querySelector('#container');
 
-            /* Camera */
-            camera = new THREE.PerspectiveCamera(1, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(1, 0.5, 1.5);
+            // Camera
+            camera = new THREE.PerspectiveCamera(1, (window.innerWidth * 1.6) / (window.innerHeight * 1.6), 1, 1000);
+            camera.position.set(72, 72, 72);
 
-            /* Scene */
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            let controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.addEventListener('change', render);
+
+            // Lights
+            let ambient   = new THREE.AmbientLight('hsl(0, 0%, 100%)', 0.25);
+            let keyLight  = new THREE.DirectionalLight(new THREE.Color('hsl(30, 100%, 75%)'), 0.75);
+            let fillLight = new THREE.DirectionalLight(new THREE.Color('hsl(240, 60%, 85%)'), 0.75);
+            let backLight = new THREE.DirectionalLight('hsl(0, 0%, 100%)', 0.75);
+
+            keyLight.position.set(-1, 0, 1);
+            fillLight.position.set(1, 0, 1);
+            backLight.position.set(1, 0, -1).normalize();
+
+            // Scene
             scene = new THREE.Scene();
-
-            /* Lights */
-            ambient = new THREE.AmbientLight('hsl(0, 0%, 100%)', 0.25);
-
-            keyLight = new THREE.DirectionalLight(new THREE.Color('hsl(30, 100%, 75%)'));
-            keyLight.position.set(-100, 0, 100);
-
-            fillLight = new THREE.DirectionalLight(new THREE.Color('hsl(240, 60%, 85%)'), 0.75);
-            fillLight.position.set(100, 0, 100);
-
-            backLight = new THREE.DirectionalLight('hsl(0, 0%, 100%)');
-            backLight.position.set(100, 0, -100).normalize();
-
-            lighting = true;
             scene.add(ambient);
             scene.add(keyLight);
             scene.add(fillLight);
             scene.add(backLight);
 
-            /* Model */
-            var mtlLoader = new THREE.MTLLoader();
+            // Slider
+            let sliderBottom = d3.sliderBottom()
+                .width(window.innerWidth / 2 - 60)
+                .min(d3.min(steps))
+                .max(d3.max(steps))
+                .step(0.01)
+                .tickFormat(d3.format('.2f'))
+                .on('onchange', value => { addParticles(d3.format('.2f')(value)); });
+
+            let slider = d3.select('#slider')
+                .append('svg')
+                .attr('width', window.innerWidth / 2)
+                .attr('height', 80)
+                .append('g')
+                .attr('transform', 'translate(30, 30)')
+                .call(sliderBottom);
+
+            // Model
+            let mtlLoader = new THREE.MTLLoader();
             mtlLoader.setPath('models/');
-            mtlLoader.load('nozzle.mtl', function (materials) {
-                materials.preload();
-                var objLoader = new THREE.OBJLoader();
-                objLoader.setMaterials(materials);
+            mtlLoader.load('nozzle.mtl', function(mtls) {
+                mtls.preload();
+                let objLoader = new THREE.OBJLoader();
+                objLoader.setMaterials(mtls);
                 objLoader.setPath('models/');
-                objLoader.load('nozzle.obj', function (object) {
-                    geometry = object;
-                    geometry.scale.set(2, 2, 2);
-                    geometry.position.set(0.01, -0.01, 0);
-                    scene.add(geometry);
+                objLoader.load('nozzle.obj', function(obj) {
+                    obj.scale.set(20, 20, 20);
+                    obj.position.set(-0.001, -0.0905, 0);
+                    scene.add(obj);
                 });
             });
 
-            /* Renderer */
-            renderer = new THREE.WebGLRenderer({ alpha: true });
-            renderer.setClearColor('hsl(0, 0%, 0%)', 0);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Particles
+            addParticles(d3.format('.2f')(sliderBottom.value()));
 
-            container.appendChild(renderer.domElement);
-
-            /* Controls */
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.25;
-            controls.enableZoom = true;
-
-            /* Events */
-            window.addEventListener('resize', onWindowResize, false);
-            window.addEventListener('keydown', onKeyboardEvent, false);
+            // Events
+            window.addEventListener('resize', render, false);
         }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function onKeyboardEvent(e) {
-            if (e.code === 'KeyL') {
-                lighting = !lighting;
-                if (lighting) {
-                    ambient.intensity = 0.25;
-                    scene.add(keyLight);
-                    scene.add(fillLight);
-                    scene.add(backLight);
-                } else {
-                    ambient.intensity = 1.0;
-                    scene.remove(keyLight);
-                    scene.remove(fillLight);
-                    scene.remove(backLight);
-                }
+        function addParticles(step) {
+            if (step == '0.07' || step == '0.10') {
+                return;
             }
+
+            if (particles) {
+                scene.remove(particles);
+            }
+
+            d3.csv('particles/' + step + '.csv', function(d) {
+                return {
+                    x: parseFloat(d['Points:0']),
+                    y: parseFloat(d['Points:1']),
+                    z: parseFloat(d['Points:2'])
+                };
+            }).then(function(data) {
+                let points = new THREE.Geometry();
+                data.forEach(function(d) { points.vertices.push(new THREE.Vector3(d.x, d.y, d.z)); });
+                particles = new THREE.Points(points, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 50%, 75%)' }));
+                scene.add(particles);
+            });
+
+            render();
+        }
+
+        function render() {
+            setTimeout(function() {
+                camera.aspect = (window.innerWidth * 1.6) / (window.innerHeight * 1.6);
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
+                renderer.render(scene, camera);
+            }, 250);
         }
 
         function cursors() {
-            let elem = self.renderer.domElement;
+            let elem = renderer.domElement;
 
-            elem.onmousedown = function (e) {
-                if (e.button === 0) {
-                    elem.style.cursor = "move";
-                } else if (e.button === 2) {
-                    elem.style.cursor = "ew-resize";
+            elem.onmousedown = function(e) {
+                if (e.button == 0) {
+                    elem.style.cursor = 'move';
+                } else if (e.button == 2) {
+                    elem.style.cursor = 'ew-resize';
                 }
             };
 
-            elem.onmouseup = function (e) {
-                elem.style.cursor = "default";
+            elem.onmouseup = function() {
+                elem.style.cursor = 'default';
             };
         }
     </script>
