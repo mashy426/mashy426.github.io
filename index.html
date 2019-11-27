@@ -6,7 +6,11 @@
     <title>Nozzle with Particles Data</title>
 
     <link href='https://fonts.googleapis.com/css?family=Lato:300' rel='stylesheet'>
-
+    <!-- <link href='https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css' rel='stylesheet'> -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/4.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    
     <script src='js/d3.min.js'></script>
     <script src='js/d3-simple-slider.min.js'></script>
     <script src='js/three.min.js'></script>
@@ -19,9 +23,10 @@
             overflow: hidden;
             margin: 0px;
             padding: 0px;
-            background: hsl(200, 20%, 14%);
-            color: hsl(200, 25%, 95%);
+            background-color: hsl(204, 12%, 22%);
             font-family: 'Lato', sans-serif;
+            cursor: progress;
+            visibility: hidden;
         }
         #gradient {
             position: absolute;
@@ -31,7 +36,8 @@
             top: 0px;
             width: 100%;
             height: 100%;
-            background-image: linear-gradient(hsl(200, 20%, 18%), hsl(200, 20%, 10%));
+            background-image: linear-gradient(hsl(204, 8%, 14%), hsl(200, 22%, 42%));
+            visibility: visible;
             z-index: 0;
             display: block;
         }
@@ -41,13 +47,14 @@
             left: -60%;
             right: 0px;
             top: -60%;
-            z-index: 0;
+            z-index: 1;
             display: block;
         }
         #title {
             position: absolute;
             top: 10px;
             width: 100%;
+            color: hsl(0, 0%, 100%);
             font-size: 5vh;
             text-align: center;
             z-index: 100;
@@ -55,22 +62,34 @@
         }
         #slider {
             position: absolute;
-            bottom: 0px;
+            bottom: -20px;
             width: 100%;
             text-align: center;
+            vertical-align: middle;
             z-index: 100;
-            display: block;
+            display: table-cell;
+        }
+        #play-pause-btn {
+            background-color: hsl(204, 40%, 80%);
+            margin-bottom: 40px;
+            padding-left: 16px;
+            padding-right: 14px;
+        }
+        #play-pause-btn:active {
+            background-color: hsl(0, 0%, 100%);
         }
     </style>
 </head>
 <body>
     <div id='gradient'></div>
-    <div id='title'>Nozzle with Particles Data</div>
-    <div id='slider'></div>
     <div id='container'></div>
+    <div id='title'>Nozzle with Particles Data</div>
+    <div id='slider'><button id='play-pause-btn' class='btn btn-lg'><span id='play-pause glyphicon' class='glyphicon glyphicon-play'></span></a></div>
     <script>
-        var camera, renderer, scene, particles,
-            steps = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13];
+        var camera, renderer, scene, slider, points, blur, focus, anim_play,
+            steps    = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13],
+            skips    = [0.07, 0.10]
+            timeouts = [];
 
         init();
 
@@ -84,7 +103,7 @@
             renderer.setClearColor('hsl(0, 0%, 0%)', 0);
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
-            document.querySelector('#container').appendChild(renderer.domElement);
+            document.getElementById('container').appendChild(renderer.domElement);
             cursors(renderer.domElement);
 
             // Controls
@@ -93,9 +112,9 @@
 
             // Lights
             let ambient   = new THREE.AmbientLight('hsl(0, 0%, 100%)', 0.25);
-            let keyLight  = new THREE.DirectionalLight(new THREE.Color('hsl(30, 100%, 75%)'), 0.75);
-            let fillLight = new THREE.DirectionalLight(new THREE.Color('hsl(240, 60%, 85%)'), 0.75);
-            let backLight = new THREE.DirectionalLight('hsl(0, 0%, 100%)', 0.75);
+            let keyLight  = new THREE.DirectionalLight(new THREE.Color('hsl(30, 100%, 75%)'), 0.6);
+            let fillLight = new THREE.DirectionalLight(new THREE.Color('hsl(240, 60%, 85%)'), 0.6);
+            let backLight = new THREE.DirectionalLight('hsl(0, 0%, 100%)', 0.4);
 
             keyLight.position.set(-1, 0, 1);
             fillLight.position.set(1, 0, 1);
@@ -109,19 +128,20 @@
             scene.add(backLight);
 
             // Slider
-            let width  = (window.innerWidth < 960) ? 480 : (window.innerWidth / 2)
-            let slider = d3.sliderBottom()
+            let width = (window.innerWidth < 960) ? 480 : (window.innerWidth / 2)
+            slider    = d3.sliderBottom()
                 .width(width - 60)
                 .min(d3.min(steps))
                 .max(d3.max(steps))
                 .step(0.01)
+                .default(steps[0])
                 .tickFormat(d3.format('.2f'))
-                .on('onchange', value => { addParticles(d3.format('.2f')(value)); });
+                .on('onchange', value => changeSlider(d3.format('.2f')(value)));
 
             d3.select('#slider')
                 .append('svg')
                 .attr('width', width)
-                .attr('height', 80)
+                .attr('height', 70)
                 .append('g')
                 .attr('transform', 'translate(30, 30)')
                 .call(slider);
@@ -129,12 +149,12 @@
             // Model
             let mtlLoader = new THREE.MTLLoader();
             mtlLoader.setPath('models/');
-            mtlLoader.load('nozzle.mtl', function(mtls) {
+            mtlLoader.load('nozzle.mtl', mtls => {
                 mtls.preload();
                 let objLoader = new THREE.OBJLoader();
                 objLoader.setMaterials(mtls);
                 objLoader.setPath('models/');
-                objLoader.load('nozzle.obj', function(obj) {
+                objLoader.load('nozzle.obj', obj => {
                     obj.scale.set(20, 20, 20);
                     obj.position.set(-0.001, -0.0905, 0);
                     scene.add(obj);
@@ -142,25 +162,119 @@
             });
 
             // Particles
-            addParticles(d3.format('.2f')(slider.value()));
-            for (i = 0; i < steps.length; ++i) {
-                setTimeout(slider.value, 2500 * i, steps[i]);
-            }
+            addParticles(d3.format('.2f')(slider.value()), true);
+            play();
 
             // Events
             window.addEventListener('resize', resize, false);
+            window.addEventListener('blur',   blur,   false);
+            window.addEventListener('focus',  focus,  false);
+            document.getElementById('play-pause-btn').addEventListener('click', playOrPause, false);
+        }
+
+        function addParticles(step, startup) {
+            if (skips.includes(parseFloat(step))) return;
+
+            d3.csv('particles/' + step + '.csv', data => {
+                return {
+                    x: parseFloat(data['Points:0']),
+                    y: parseFloat(data['Points:1']),
+                    z: parseFloat(data['Points:2'])
+                };
+            }).then(data => {
+                let particles = new THREE.Geometry();
+                data.forEach(d => particles.vertices.push(new THREE.Vector3(d.x, d.y, d.z)));
+                if (points) scene.remove(points);
+                points = new THREE.Points(particles, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 75%, 75%)' }));
+                scene.add(points);
+
+                setTimeout((pass => {
+                    if (pass < 3) {
+                        if (startup) {
+                            document.body.style.cursor = 'default';
+                            document.getElementById('container').style.visibility = 'visible';
+                            document.getElementById('title').style.visibility     = 'visible';
+                            document.getElementById('slider').style.visibility    = 'visible';
+                        }
+                        render();
+                        setTimeout(arguments.callee, 500, pass + 1);
+                    }
+                }), 500, 0);
+            });
+        }
+
+        function changeSlider(step) {
+            addParticles(step, false);
+
+            if (anim_play) {
+                pause();
+                play();
+            }
+        }
+
+        function currentStep() {
+            let step = d3.format('.2f')(slider.value());
+
+            while (skips.includes(parseFloat(step)))
+                step = d3.format('.2f')(slider.value() + 0.01);
+
+            return step;
+        }
+
+        function play() {
+            if (anim_play) return;
+
+            anim_play = true;
+            document.getElementById('play-pause glyphicon').className = 'glyphicon glyphicon-pause';
+            _play(steps.indexOf(parseFloat(currentStep())));
+
+            function _play(step) {
+                if (!anim_play) return;
+                if (step < steps.length) {
+                    slider.value(steps[step]);
+                    timeouts.push(setTimeout(() => {
+                        step = currentStep();
+                        if (d3.format('.2f')(slider.value()) != step)
+                            _play(steps.indexOf(parseFloat(step)));
+                        else
+                            _play(steps.indexOf(parseFloat(step)) + 1);
+                    }, 2000));
+                } else if (step === steps.length) {
+                    slider.value(steps[0]);
+                    timeouts.push(setTimeout(() => {
+                        step = currentStep();
+                        if (d3.format('.2f')(slider.value()) != step)
+                            _play(steps.indexOf(parseFloat(step)));
+                        else
+                            _play(steps.indexOf(parseFloat(step)) + 1);
+                    }, 2000));
+                }
+            }
+        }
+
+        function pause() {
+            if (!anim_play) return;
+
+            anim_play = false;
+            timeouts.forEach(clearTimeout);
+            timeouts = [];
+            document.getElementById('play-pause glyphicon').className = 'glyphicon glyphicon-play';
+        }
+
+        function playOrPause() {
+            if (anim_play)
+                pause();
+            else
+                play();
         }
 
         function cursors(elem) {
-            elem.onmousedown = function(e) {
-                if (e.button === 0) {
-                    elem.style.cursor = 'move';
-                } else if (e.button === 2) {
-                    elem.style.cursor = 'ew-resize';
-                }
+            elem.onmousedown = e => {
+                if      (e.button === 0) elem.style.cursor = 'move';
+                else if (e.button === 2) elem.style.cursor = 'ew-resize';
             };
 
-            elem.onmouseup = function() {
+            elem.onmouseup = () => {
                 elem.style.cursor = 'default';
             };
         }
@@ -169,41 +283,31 @@
             renderer.render(scene, camera);
         }
 
-        function addParticles(step) {
-            if (step === '0.07' || step === '0.10') {
-                return;
-            }
-
-            if (particles) {
-                scene.remove(particles);
-            }
-
-            d3.csv('particles/' + step + '.csv', function(d) {
-                return {
-                    x: parseFloat(d['Points:0']),
-                    y: parseFloat(d['Points:1']),
-                    z: parseFloat(d['Points:2'])
-                };
-            }).then(function(data) {
-                let points = new THREE.Geometry();
-                data.forEach(function(d) { points.vertices.push(new THREE.Vector3(d.x, d.y, d.z)); });
-                particles = new THREE.Points(points, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 50%, 75%)' }));
-                scene.add(particles);
-
-                setTimeout((function(n) {
-                    if (n < 3) {
-                        render();
-                        setTimeout(arguments.callee, 500, n + 1);
-                    }
-                }), 500, 0);
-            });
-        }
-
         function resize() {
             camera.aspect = (window.innerWidth * 1.6) / (window.innerHeight * 1.6);
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth * 1.6, window.innerHeight * 1.6);
             render();
+        }
+
+        function blur() {
+            if (!focus) return;
+
+            focus = false;
+            if (anim_play) {
+                blur = true;
+                pause();
+            }
+        }
+
+        function focus() {
+            if (focus) return;
+
+            focus = true;
+            if (!anim_play && blur) {
+                blur = false;
+                play();
+            }
         }
     </script>
 </body>
