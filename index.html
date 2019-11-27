@@ -49,7 +49,7 @@
         }
         #title {
             position: absolute;
-            top: 5px;
+            top: 2px;
             width: 100%;
             color: hsl(0, 0%, 100%);
             font-size: 5vh;
@@ -59,23 +59,35 @@
         }
         #graph {
             position: absolute;
+            right: 0px;
+            top: 60px;
+            width: 30%;
+            height: 44.5%;
             border-color: hsl(204, 10%, 50%);
             border-style: dotted;
             border-bottom-width: 2px;
             border-left-width: 2px;
             border-right-width: 0px;
             border-top-width: 2px;
+            text-align: center;
+            z-index: 99;
+            display: block;
+        }
+        #graph-text {
+            position: absolute;
             right: 0px;
             top: 60px;
             width: 30%;
-            height: 44.5%;
-            text-align: center;
+            padding-left: 6px;
+            padding-top: 2px;
+            color: hsl(204, 10%, 50%);
+            font-size: 2vh;
             z-index: 100;
             display: block;
         }
         #slider {
             position: absolute;
-            bottom: -25px;
+            bottom: -28px;
             width: 100%;
             text-align: center;
             vertical-align: middle;
@@ -99,6 +111,7 @@
     <div id='container'></div>
     <div id='title'>Nozzle with Particles Data</div>
     <div id='graph'></div>
+    <div id='graph-text'>Simulations</div>
     <div id='slider'><button id='play-pause-btn' class='btn btn-lg'><span id='play-pause glyphicon' class='glyphicon glyphicon-play'></span></div>
     <script>
         var camera, renderer, scene, slider, points, blur, focus, anim_play,
@@ -412,7 +425,7 @@
                             _play(steps.indexOf(parseFloat(step)));
                         else
                             _play(steps.indexOf(parseFloat(step)) + 1);
-                    }, 2000));
+                    }, 2500));
                 } else if (step === steps.length) {
                     slider.value(steps[0]);
                     timeouts.push(setTimeout(() => {
@@ -421,7 +434,7 @@
                             _play(steps.indexOf(parseFloat(step)));
                         else
                             _play(steps.indexOf(parseFloat(step)) + 1);
-                    }, 2000));
+                    }, 2500));
                 }
             }
         }
