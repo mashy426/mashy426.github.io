@@ -49,7 +49,7 @@
         }
         #title {
             position: absolute;
-            top: 10px;
+            top: 5px;
             width: 100%;
             color: hsl(0, 0%, 100%);
             font-size: 5vh;
@@ -57,9 +57,25 @@
             z-index: 100;
             display: block;
         }
+        #graph {
+            position: absolute;
+            border-color: hsl(204, 10%, 50%);
+            border-style: dotted;
+            border-bottom-width: 2px;
+            border-left-width: 2px;
+            border-right-width: 0px;
+            border-top-width: 2px;
+            right: 0px;
+            top: 60px;
+            width: 30%;
+            height: 44.5%;
+            text-align: center;
+            z-index: 100;
+            display: block;
+        }
         #slider {
             position: absolute;
-            bottom: -20px;
+            bottom: -25px;
             width: 100%;
             text-align: center;
             vertical-align: middle;
@@ -82,19 +98,46 @@
     <div id='gradient'></div>
     <div id='container'></div>
     <div id='title'>Nozzle with Particles Data</div>
-    <div id='slider'><button id='play-pause-btn' class='btn btn-lg'><span id='play-pause glyphicon' class='glyphicon glyphicon-play'></span></a></div>
+    <div id='graph'></div>
+    <div id='slider'><button id='play-pause-btn' class='btn btn-lg'><span id='play-pause glyphicon' class='glyphicon glyphicon-play'></span></div>
     <script>
         var camera, renderer, scene, slider, points, blur, focus, anim_play,
+            linkGroup, nodeGroup, linkElements, nodeElements, selectedId, simulation, dragDrop,
             steps    = [0.05, 0.06, 0.08, 0.09, 0.11, 0.12, 0.13],
-            skips    = [0.07, 0.10]
-            timeouts = [];
+            skips    = [0.07, 0.10],
+            timeouts = [],
+            nodes    = [{ id: 'mammal', group: 0, label: 'Mammals' },
+                        { id: 'dog'   , group: 0, label: 'Dogs'    },
+                        { id: 'cat'   , group: 0, label: 'Cats'    },
+                        { id: 'fox'   , group: 0, label: 'Foxes'   },
+                        { id: 'elk'   , group: 0, label: 'Elk'     },
+                        { id: 'insect', group: 1, label: 'Insects' },
+                        { id: 'ant'   , group: 1, label: 'Ants'    },
+                        { id: 'bee'   , group: 1, label: 'Bees'    },
+                        { id: 'fish'  , group: 2, label: 'Fish'    },
+                        { id: 'carp'  , group: 2, label: 'Carp'    },
+                        { id: 'pike'  , group: 2, label: 'Pikes'   }],
+            links    = [{ target: 'mammal', source: 'dog' , strength: 0.7 },
+                        { target: 'mammal', source: 'cat' , strength: 0.7 },
+                        { target: 'mammal', source: 'fox' , strength: 0.7 },
+                        { target: 'mammal', source: 'elk' , strength: 0.7 },
+                        { target: 'insect', source: 'ant' , strength: 0.7 },
+                        { target: 'insect', source: 'bee' , strength: 0.7 },
+                        { target: 'fish'  , source: 'carp', strength: 0.7 },
+                        { target: 'fish'  , source: 'pike', strength: 0.7 },
+                        { target: 'cat'   , source: 'elk' , strength: 0.2 },
+                        { target: 'carp'  , source: 'ant' , strength: 0.1 },
+                        { target: 'elk'   , source: 'bee' , strength: 0.1 },
+                        { target: 'dog'   , source: 'cat' , strength: 0.1 },
+                        { target: 'fox'   , source: 'ant' , strength: 0.1 },
+                        { target: 'pike'  , source: 'cat' , strength: 0.1 }];
 
         init();
 
         function init() {
             // Camera
             camera = new THREE.PerspectiveCamera(1, (window.innerWidth * 1.6) / (window.innerHeight * 1.6), 1, 1000);
-            camera.position.set(72, 72, 72);
+            camera.position.set(71, 71, 71);
 
             // Renderer
             renderer = new THREE.WebGLRenderer({ alpha: true });
@@ -124,6 +167,44 @@
             scene.add(keyLight);
             scene.add(fillLight);
             scene.add(backLight);
+
+            // Graph
+            let graph = d3
+                .select('#graph')
+                .append('svg')
+                .attr('width', window.innerWidth * 0.3)
+                .attr('height', window.innerHeight * 0.44);
+
+            linkGroup = graph.append('g').attr('class', 'links');
+            nodeGroup = graph.append('g').attr('class', 'nodes');
+
+            let linkForce = d3
+                .forceLink()
+                .id(link => { return link.id })
+                .strength(link => { return link.strength });
+
+            simulation = d3
+                .forceSimulation()
+                .force('link', linkForce)
+                .force('charge', d3.forceManyBody().strength(-120))
+                .force('center', d3.forceCenter(window.innerWidth * 0.15, window.innerHeight * 0.22));
+
+            dragDrop = d3.drag().on('start', node => {
+                node.fx = node.x;
+                node.fy = node.y;
+            }).on('drag', node => {
+                simulation.alphaTarget(0.7).restart();
+                node.fx = d3.event.x;
+                node.fy = d3.event.y;
+            }).on('end', node => {
+                if (!d3.event.active)
+                    simulation.alphaTarget(0);
+
+                node.fx = null;
+                node.fy = null;
+            });
+
+            updateSimulation();
 
             // Slider
             let width = (window.innerWidth < 960) ? 480 : (window.innerWidth / 2)
@@ -183,22 +264,117 @@
                 let particles = new THREE.Geometry();
                 data.forEach(d => particles.vertices.push(new THREE.Vector3(d.x, d.y, d.z)));
                 if (points) scene.remove(points);
-                points = new THREE.Points(particles, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 75%, 75%)' }));
+                points = new THREE.Points(particles, new THREE.PointsMaterial({ size: 0.2, color: 'hsl(50, 65%, 75%)' }));
                 scene.add(points);
 
                 setTimeout((pass => {
                     if (pass < 3) {
                         if (startup) {
-                            document.body.style.cursor = 'default';
-                            document.getElementById('container').style.visibility = 'visible';
-                            document.getElementById('title').style.visibility     = 'visible';
-                            document.getElementById('slider').style.visibility    = 'visible';
+                            document.body.style.cursor     = 'default';
+                            document.body.style.visibility = 'visible';
                         }
                         render();
                         setTimeout(arguments.callee, 500, pass + 1);
                     }
                 }), 500, 0);
             });
+        }
+
+        function getNeighbors(node) {
+            return links.reduce(neighbors, link => {
+                if (link.target.id === node.id)
+                    neighbors.push(link.source.id);
+                return neighbors;
+            }, [node.id]);
+        }
+
+        function selectNode(selectedNode) {
+            if (selectedId === selectedNode.id) {
+                selectedId = undefined;
+                resetData();
+                updateSimulation();
+            } else {
+                selectedId = selectedNode.id;
+                updateData(selectedNode);
+                updateSimulation();
+            }
+
+            nodeElements.attr('fill', 'hsl(50, 65%, 75%)');
+            linkElements.attr('stroke', 'hsl(204, 40%, 80%)');
+        }
+
+        function resetData() {
+            let nodeIds = nodes.map(node => { return node.id });
+            nodes.forEach(node => { if (nodeIds.indexOf(node.id) === -1) nodes.push(node) });
+        }
+
+        function updateData(selectedNode) {
+            let neighbors = getNeighbors(selectedNode);
+            let newNodes = nodes.filter(node => { return neighbors.indexOf(node.id) > -1 });
+
+            let diff = {
+                removed: nodes.filter(node => { return newNodes.indexOf(node) === -1 }),
+                added: newNodes.filter(node => { return nodes.indexOf(node) === -1 })
+            };
+
+            diff.removed.forEach(node => nodes.splice(nodes.indexOf(node), 1));
+            diff.added.forEach(node => nodes.push(node));
+
+            links = links.filter(link => {
+                return link.target.id === selectedNode.id || link.source.id === selectedNode.id;
+            });
+        }
+
+        function updateGraph() {
+            linkElements = linkGroup
+                .selectAll('line')
+                .data(links, link => { return link.target.id + link.source.id });
+
+            linkElements.exit().remove();
+
+            let linkEnter = linkElements
+                .enter().append('line')
+                .attr('stroke-width', 1)
+                .attr('stroke', 'hsl(204, 40%, 80%)');
+
+            linkElements = linkEnter.merge(linkElements);
+
+            nodeElements = nodeGroup
+                .selectAll('circle')
+                .data(nodes, node => { return node.id });
+
+            nodeElements.exit().remove();
+
+            let nodeEnter = nodeElements
+                .enter().append('circle')
+                .attr('r', 10)
+                .attr('fill', 'hsl(50, 65%, 75%)')
+                .call(dragDrop)
+                .on('click', selectNode);
+
+            nodeElements = nodeEnter.merge(nodeElements);
+        }
+
+        function updateSimulation() {
+            updateGraph();
+
+            simulation.nodes(nodes).on('tick', () => {
+                nodeElements
+                .attr('cx', node => { return node.x })
+                .attr('cy', node => { return node.y });
+                linkElements
+                .attr('x1', link => { return link.source.x })
+                .attr('y1', link => { return link.source.y })
+                .attr('x2', link => { return link.target.x })
+                .attr('y2', link => { return link.target.y });
+            });
+
+            simulation
+                .force('link')
+                .links(links);
+            simulation
+                .alphaTarget(0.7)
+                .restart();
         }
 
         function changeSlider(step) {
@@ -255,7 +431,7 @@
 
             anim_play = false;
             timeouts.forEach(clearTimeout);
-            timeouts = [];
+            timeouts  = [];
             document.getElementById('play-pause glyphicon').className = 'glyphicon glyphicon-play';
         }
 
