@@ -1,3 +1,3 @@
 # Nozzle with Particles Data
 
-View at [mashy426.github.io](https://mashy426.github.io).
+View at [shyam-patel7.github.io](https://shyam-patel7.github.io).
