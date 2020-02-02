@@ -1,5 +1,5 @@
 # Contrail Particle Visualizer
-An aircraft contrail formation simulation display tool. To view, go to [shyam-patel7.github.io](https://shyam-patel7.github.io).
+To view, go to [shyam-patel7.github.io](https://shyam-patel7.github.io).
 
 ## Abstract
 With the current climate crisis, it is more important than ever that we consider aircraft contrail parameterization results in the conservation equations used in global atmospheric models. The simulation tool displays particles of contrail structure observed at the end of the jet and vortex regime in a web-view that utilizes D3.js and Three.js cross-browser JavaScript libraries for producing dynamic, interactive data visualizations and 3D models. The work was evaluated through a small case study. The tool successfully enables the presentation of contrail particle data.
